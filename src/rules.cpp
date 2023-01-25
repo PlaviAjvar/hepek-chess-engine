@@ -38,8 +38,9 @@ namespace chess {
         }
     }
 
-    GameState::GameState(Player to_move, bitmap **pieces, int half_move_counter, bool *can_castle_king_side,
-                         bool *can_castle_queen_side, square en_passant_square)
+    GameState::GameState(const Player to_move, const bitmap **pieces, const int half_move_counter,
+                         const bool *can_castle_king_side, const bool *can_castle_queen_side,
+                         const square en_passant_square)
             : to_move(to_move), half_move_counter(half_move_counter),
               en_passant_square(en_passant_square) {
         std::copy(&pieces[0][0], &pieces[0][0] + 12, &(this->pieces[0][0]));
@@ -73,12 +74,12 @@ namespace chess {
         return mask;
     }
 
-    square GameState::get_attack_map(const Player player) const {
+    bitmap GameState::get_attack_map(const Player player) const {
         bitmap attack_map = 0;
 
         for (int i = 0; i < 6; ++i) {
             bitmap piece_locations = pieces[player][i];
-            const Piece piece_type(static_cast<Piece>(i));
+            const auto piece_type(static_cast<Piece>(i));
 
             while (piece_locations > 0) {
                 const square start = get_lowest_bit(piece_locations);
@@ -87,6 +88,8 @@ namespace chess {
                 piece_locations ^= (1ULL << start);
             }
         }
+
+        return attack_map;
     }
 
     square GameState::get_king_position(const Player player) const {
@@ -145,7 +148,7 @@ namespace chess {
         // Check non-castling moves
         for (int i = 0; i < 6; ++i) {
             bitmap piece_locations = pieces[to_move][i];
-            const Piece piece_type(static_cast<Piece>(i));
+            const auto piece_type(static_cast<Piece>(i));
 
             while (piece_locations > 0) {
                 const square start = get_lowest_bit(piece_locations);
@@ -220,7 +223,7 @@ namespace chess {
 
     bitmap GameState::span_pawn(const square start, const Player player) const {
         assert(pieces[player][Piece::PAWN] & (1ULL << start));
-        bitmap span_mask;
+        bitmap span_mask = 0;
         square finish;
         int direction_modifier = (player == Player::WHITE) ? 1 : -1;
 
@@ -234,8 +237,8 @@ namespace chess {
 
         // Pawn captures
         const int direction_offset[] = {7, 9};
-        for (int i = 0; i < 2; ++i) {
-            finish = start + direction_modifier * direction_offset[i];
+        for (const auto &offset: direction_offset) {
+            finish = start + direction_modifier * offset;
             if (is_occupied(finish) && square_ownership(finish) != player || finish == en_passant_square)
                 span_mask |= finish;
         }
@@ -255,7 +258,7 @@ namespace chess {
     bitmap GameState::span_jumping(const square start, const Player player, const int *direction_offset,
                                    const Piece piece_type) const {
         assert(pieces[player][piece_type] & (1ULL << start));
-        bitmap span_mask;
+        bitmap span_mask = 0;
 
         for (int i = 0; i < 8; ++i) {
             square current = start + direction_offset[i];
@@ -280,7 +283,7 @@ namespace chess {
     bitmap GameState::span_sliding(const square start, const Player player, const int *direction_offset,
                                    const Piece piece_type) const {
         assert(pieces[player][piece_type] & (1ULL << start));
-        bitmap span_mask;
+        bitmap span_mask = 0;
         const int num_directions = (piece_type == Piece::QUEEN) ? 8 : 4;
 
         for (int i = 0; i < num_directions; ++i) {
@@ -359,7 +362,7 @@ namespace chess {
      *****************************/
     GameState NormalMove::transform(const GameState &state) const {
         // Flip turn player
-        Player to_move = static_cast<Player>(state.to_move ^ 1);
+        const auto to_move = static_cast<Player>(state.to_move ^ 1);
 
         // Update bitboards
         bitmap pieces[2][6];
@@ -402,15 +405,15 @@ namespace chess {
             }
         }
 
-        return GameState(to_move, (bitmap **) pieces, half_move_counter, can_castle_king_side, can_castle_queen_side,
-                         en_passant_square);
+        return {to_move, (const bitmap **) pieces, half_move_counter, can_castle_king_side, can_castle_queen_side,
+                en_passant_square};
     }
 
     GameState PromotionMove::transform(const GameState &state) const {
         assert(piece == Piece::PAWN);
 
         // Flip turn player
-        Player to_move = static_cast<Player>(state.to_move ^ 1);
+        auto to_move = static_cast<Player>(state.to_move ^ 1);
 
         // Update bitboards
         bitmap pieces[2][6];
@@ -418,13 +421,13 @@ namespace chess {
         pieces[state.to_move][Piece::PAWN] ^= (1ULL << start);
         pieces[state.to_move][promoted_piece] |= (1ULL << finish);
 
-        return GameState(to_move, (bitmap **) pieces, 0, state.can_castle_king_side, state.can_castle_queen_side,
-                         INVALID_SQUARE);
+        return {to_move, (const bitmap **) pieces, 0, state.can_castle_king_side,
+                state.can_castle_queen_side, INVALID_SQUARE};
     }
 
     GameState CastlingMove::transform(const GameState &state) const {
         // Flip turn player
-        Player to_move = static_cast<Player>(state.to_move ^ 1);
+        auto to_move = static_cast<Player>(state.to_move ^ 1);
 
         // Update bitboards
         bitmap pieces[2][6];
@@ -460,8 +463,8 @@ namespace chess {
         can_castle_king_side[state.to_move] = false;
         can_castle_queen_side[state.to_move] = false;
 
-        return GameState(to_move, (bitmap **) pieces, half_move_counter, can_castle_king_side, can_castle_queen_side,
-                         INVALID_SQUARE);
+        return {to_move, (const bitmap **) pieces, half_move_counter, can_castle_king_side, can_castle_queen_side,
+                INVALID_SQUARE};
     }
 
     Player GameState::square_ownership(square query) const {
