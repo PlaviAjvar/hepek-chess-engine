@@ -85,8 +85,8 @@ namespace chess {
     public:
         GameState();
 
-        GameState(Player to_move, bitmap **pieces, int half_move_counter, bool *can_castle_king_side,
-                  bool *can_castle_queen_side, square en_passant_square);
+        GameState(Player to_move, const bitmap **pieces, int half_move_counter, const bool *can_castle_king_side,
+                  const bool *can_castle_queen_side, square en_passant_square);
 
     private:
         bitmap span(square, Player, Piece) const;
@@ -125,16 +125,16 @@ namespace chess {
 
         square get_king_position(Player player) const;
 
-        square get_attack_map(Player player) const;
+        bitmap get_attack_map(Player player) const;
 
         Player square_ownership(square) const;
 
     public:
         bool is_check() const;
-//
-//        bool is_checkmate() const;
-//
-//        bool is_stalemate() const;
+
+        bool is_checkmate() const;
+
+        bool is_stalemate() const;
 
 //    bool is_draw(const std::vector<GameState> &) const;
 
